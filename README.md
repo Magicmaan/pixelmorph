@@ -44,16 +44,16 @@
    ```
 3. **If you have trouble installing PyTorch** (e.g., due to CUDA version differences):
 
+   - **Edit `requirements.txt`**: Remove the `torch` and `torchvision` lines.
+   - **Install PyTorch manually** for your system and CUDA version by following the [official instructions](https://pytorch.org/get-started/locally/).
 
-    - **Edit `requirements.txt`**: Remove the `torch` and `torchvision` lines.
-    - **Install PyTorch manually** for your system and CUDA version by following the [official instructions](https://pytorch.org/get-started/locally/).
+   For example, for CUDA 12.1:
 
-    For example, for CUDA 12.1:
-    ```bash
-    pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-    ```
+   ```bash
+   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+   ```
 
-    Replace `cu121` with the version matching your GPU and drivers (e.g., `cu118`, `cpu`, etc.).
+   Replace `cu121` with the version matching your GPU and drivers (e.g., `cu118`, `cpu`, etc.).
 
 ## 🎮 How to Use
 
@@ -223,6 +223,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - PIL/Pillow contributors for image processing capabilities
 - CUDA team for GPU acceleration support
 - Pixel art community for inspiration and techniques
+- Special thanks to [aarthificial](https://github.com/aarthificial) for the original idea and inspiration.
 
 ---
 
