@@ -12,6 +12,44 @@
   *Transform animation templates into textured sprites*
 </div>
 
+## What?
+
+I love pixel art, it's great, however i **hate** making animations with it. It's slow, cumbersome, and is not fun to me, especially characters.
+
+So I decided to make a tool to simplify the process. With inspiration from [aarthificial](https://github.com/aarthificial) for the idea.
+
+In summary, this tool tries to recreate 3D UV mapping. You supply a UV, a base character, and the animation frame, and it'll spit out the textured version.
+
+On first run, the model must learn the characters shape, but after that you can just supply new images for it to transfer to. It's a one and done solution
+
+<div align="center">
+
+<table>
+  <tr>
+    <td align="center" valign="middle">
+      <img src="example/uv_example.png" alt="UV Map Example" width="120"><br>
+      <img src="example/texture_example.png" alt="Texture Example" width="120">
+    </td>
+    <td align="center" valign="middle" style="font-size: 32px;">&#8594;</td>
+    <td align="center" valign="middle">
+      <img src="example/target_example.png" alt="Target Pose" width="120">
+    </td>
+    <td align="center" valign="middle" style="font-size: 32px;">&#8594;</td>
+    <td align="center" valign="middle">
+      <img src="example/output_example.png" alt="Textured Output" width="120">
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><em>UV Map<br>Texture</em></td>
+    <td></td>
+    <td align="center"><em>Target Pose</em></td>
+    <td></td>
+    <td align="center"><em>Textured Result</em></td>
+  </tr>
+</table>
+
+</div>
+
 ## ✨ Features
 
 - � **Color-Coded Training**: Use simple color maps to define different body parts/regions
@@ -25,7 +63,7 @@
 
 ### Prerequisites
 
-- **Python 3.12.3** (recommended)
+- **Python 3.11** (recommended)
 - **CUDA-compatible GPU** (recommended for training)
 - **PyTorch with CUDA support**
 
