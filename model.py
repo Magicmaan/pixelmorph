@@ -93,7 +93,7 @@ class Model(nn.Module):
 			if epoch % 1000 == 0 and torch.cuda.is_available():
 				torch.cuda.empty_cache()
 
-	def apply_to_new_pose(self, new_pose_path: str) -> Image.Image:
+	def apply_to_new_pose(self, new_pose: Image.Image) -> Image.Image:
 		"""
 		Applies the trained model to a new pose UV map and saves the textured image.
 		Uses local coordinates per limb for inference.
@@ -101,7 +101,7 @@ class Model(nn.Module):
 		Args:
 			new_pose_path (str): Path to the new pose UV map.
 		"""
-		uv_newpose = np.array(Image.open(new_pose_path).convert("RGB"))
+		uv_newpose = np.array(new_pose.convert("RGB"))
 		output = np.zeros((UV_HEIGHT, UV_WIDTH, 3), dtype=np.uint8)
 
 		with torch.no_grad():  # Disable gradient computation for inference

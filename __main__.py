@@ -16,6 +16,54 @@ from util import get_local_coordinates
 # 1. Define multiple training UV + texture file paths
 # --------------------------
 
+IS_SPRITESHEET: bool = True  # Set to True if using a spritesheet
+
+def from_spritesheet(image: Image.Image, cell_width: int, cell_height: int) -> List[Image.Image]:
+	"""
+	Extracts images from a spritesheet.
+	
+	Args:
+		Image: The spritesheet image.
+		cell_width: The width of each cell in the spritesheet.
+		cell_height: The height of each cell in the spritesheet.
+
+	Returns:
+		List of extracted images.
+	"""
+	width, height = image.size
+	num_cols = width // cell_width
+	num_rows = height // cell_height
+
+	cells = []
+	for row in range(num_rows):
+		for col in range(num_cols):
+			img = image.crop((
+				col * cell_width, 
+				row * cell_height, 
+				(col + 1) * cell_width, 
+				(row + 1) * cell_height))
+			# Ensure the image is not empty
+			if img.size == 0 or img.size[0] <= 0 or img.size[1] <= 0:
+				print(f"Warning: Empty image at row {row}, col {col} in spritesheet")
+				continue
+			
+			if not img.getbbox(alpha_only=True):
+				print(f"Warning: Image at row {row}, col {col} in spritesheet is empty")
+				continue
+			
+			# Paste the cropped image onto a blank 32x32 canvas, centered
+			canvas = Image.new("RGBA", (32, 32), (0, 0, 0, 0))  # Transparent background
+			offset_x = (32 - img.width) // 2
+			offset_y = (32 - img.height) // 2
+			canvas.paste(img, (offset_x, offset_y))
+			img = canvas
+   
+			cells.append(img)
+   
+	return cells
+
+
+
 def load_files(duplicate: bool = False) -> Tuple[List[str], List[str], List[str]]:
 	"""
 	Load UV and texture files for training.
@@ -47,7 +95,7 @@ def load_files(duplicate: bool = False) -> Tuple[List[str], List[str], List[str]
     #  add duplicate files for training
 		uv_files += uv_files[:len(uv_files)//2]
 		tex_files += tex_files[:len(tex_files)//2]
-		target_files += target_files[:len(target_files)//2]
+		# target_files += target_files[:len(target_files)//2]
 	print(f"uv files: {uv_files}")
 	print(f"texture files: {tex_files}")
 	print(f"target files: {target_files}")
@@ -60,10 +108,19 @@ UV_HEIGHT: int
 UV_WIDTH: int
 UV_HEIGHT, UV_WIDTH, _ = uv_sample.shape
 
+target_images = [Image.open(path).convert("RGB") for path in target_files]
+if IS_SPRITESHEET:
+	new_target_images = []
+	for img in target_images:
+		# Extract images from spritesheet
+		img_sprites = from_spritesheet(img, 16, 32)
+		if img_sprites:
+			new_target_images.extend(img_sprites)
+	target_images = new_target_images
 
+for id, img in enumerate(target_images):
+    img.save(Path("output") / f"target_{id}.png")
 
-
-# --------------------------
 # 4. Build palette from all textures combined
 # --------------------------
 all_colors: Set[Tuple[int, int, int]] = set()
@@ -160,7 +217,7 @@ def main() -> None:
 	if torch.cuda.is_available():
 		print(f"CUDA memory allocated: {torch.cuda.memory_allocated(device) / 1024**2:.2f} MB")
   
-	os.remove("weights/weights.pth") if Path("weights/weights.pth").exists() else None
+	# os.remove("weights/weights.pth") if Path("weights/weights.pth").exists() else None
 
 	model: Model = Model(palette, num_colors, inputs, targets)
 	print("Model created")
@@ -171,13 +228,14 @@ def main() -> None:
 		model.train(20000, 0.004)
 		model.save()
 
-	new_pose = model.apply_to_new_pose(target_files[0])  # Use the first target file as the new pose
- 
-	if new_pose is not None:
-		new_pose.save(Path("output") / Path(target_files[0]).name)
-		print(f"New pose textured image saved as '{target_files[0]}'")
-	else:
-		print("Failed to apply model to new pose.")
+	for idx,t in enumerate(target_images):
+		new_pose = model.apply_to_new_pose(t)
+
+		if new_pose is not None:
+			new_pose.save(Path("output") / Path(f"new_pose_{idx}.png"))
+			print(f"New pose textured image saved as 'new_pose_{idx}.png'")
+		else:
+			print("Failed to apply model to new pose.")
 
 	# Clean up CUDA memory
 	if torch.cuda.is_available():
