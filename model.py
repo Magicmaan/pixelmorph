@@ -9,7 +9,7 @@ from os import listdir
 from os.path import isfile, join
 
 from constants import LIMB_COLORS, NUM_LIMBS, UV_HEIGHT, UV_WIDTH
-from util import get_local_coordinates
+from util import get_local_coordinates, get_limb_direction_features
 
 class Model(nn.Module):
 	def __init__(self, palette, num_colors: int, inputs, targets) -> None:
@@ -22,11 +22,20 @@ class Model(nn.Module):
 			case False:
 				print("Using CPU for training")
 	
+		# Improved architecture with more capacity and regularization
+		# Input: NUM_LIMBS (one-hot) + 2 (local coords) + 4 (direction features) = NUM_LIMBS + 6
 		self.model = nn.Sequential(
-			nn.Linear(NUM_LIMBS + 2, 128),
-			nn.ReLU(),
-			nn.Linear(128, 128),
-			nn.ReLU(),
+			nn.Linear(NUM_LIMBS + 6, 512),
+			nn.GELU(),
+			nn.Dropout(0.1),
+			nn.Linear(512, 512),
+			nn.GELU(),
+			nn.Dropout(0.1),
+			nn.Linear(512, 512),
+			nn.GELU(),
+			nn.Dropout(0.1),
+			nn.Linear(512, 128),
+			nn.GELU(),
 			nn.Linear(128, num_colors)
 		)
 		self.to(self.device)
@@ -120,8 +129,17 @@ class Model(nn.Module):
 						
 						# Use local coordinates for this limb
 						local_x, local_y = get_local_coordinates(x, y, limb_id, LIMB_COLORS, uv_newpose)
+						
+						# Get directional features for this limb
+						angle_from_center, principal_angle, distance_ratio, aspect_ratio = get_limb_direction_features(
+							x, y, limb_id, LIMB_COLORS, uv_newpose
+						)
 
-						inp = torch.tensor(np.concatenate([one_hot, [local_x, local_y]]), dtype=torch.float32, device=self.device)
+						inp = torch.tensor(np.concatenate([
+							one_hot, 
+							[local_x, local_y], 
+							[angle_from_center, principal_angle, distance_ratio, aspect_ratio]
+						]), dtype=torch.float32, device=self.device)
 						logits = self(inp.unsqueeze(0))
 
 						pred_idx = int(torch.argmax(logits, dim=1).detach().item())

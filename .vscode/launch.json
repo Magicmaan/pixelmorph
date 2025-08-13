@@ -1,0 +1,10 @@
+{
+  "configurations": [
+    {
+      "name": "Python: Run __main__",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/__main__.py"
+    }
+  ]
+}

@@ -10,7 +10,7 @@ from os.path import isfile, join
 
 from constants import LIMB_COLORS, NUM_LIMBS
 from model import Model
-from util import get_local_coordinates
+from util import get_local_coordinates, get_limb_direction_features
 
 # --------------------------
 # 1. Define multiple training UV + texture file paths
@@ -101,7 +101,7 @@ def load_files(duplicate: bool = False) -> Tuple[List[str], List[str], List[str]
 	print(f"target files: {target_files}")
 	return uv_files, tex_files, target_files
 
-uv_files, tex_files, target_files = load_files()
+uv_files, tex_files, target_files = load_files(duplicate=True)  # Use data duplication
 # Load first UV to get image size
 uv_sample = np.array(Image.open(uv_files[0]).convert("RGB"))
 UV_HEIGHT: int
@@ -109,6 +109,8 @@ UV_WIDTH: int
 UV_HEIGHT, UV_WIDTH, _ = uv_sample.shape
 
 target_images = [Image.open(path).convert("RGB") for path in target_files]
+# split the image into individual sprites if using a spritesheet
+# also resizes the cells to 32x32 to match the model input
 if IS_SPRITESHEET:
 	new_target_images = []
 	for img in target_images:
@@ -118,8 +120,6 @@ if IS_SPRITESHEET:
 			new_target_images.extend(img_sprites)
 	target_images = new_target_images
 
-for id, img in enumerate(target_images):
-    img.save(Path("output") / f"target_{id}.png")
 
 # 4. Build palette from all textures combined
 # --------------------------
@@ -160,8 +160,17 @@ for idx, (uv_path, tex_path) in enumerate(zip(uv_files, tex_files)):
 
 				# Use local coordinates relative to this limb's bounding box
 				local_x, local_y = get_local_coordinates(x, y, limb_id, LIMB_COLORS, uv_img)
+				
+				# Get directional features for this limb
+				angle_from_center, principal_angle, distance_ratio, aspect_ratio = get_limb_direction_features(
+					x, y, limb_id, LIMB_COLORS, uv_img
+				)
 
-				inputs_list.append(np.concatenate([one_hot, [local_x, local_y]]))
+				inputs_list.append(np.concatenate([
+					one_hot, 
+					[local_x, local_y], 
+					[angle_from_center, principal_angle, distance_ratio, aspect_ratio]
+				]))
 				targets_list.append(color_to_index[tuple(tex_img[y, x])])
 
 # Check for CUDA availability
@@ -225,7 +234,8 @@ def main() -> None:
 	# load the existing model weights if exists
 	if not model.load():
 		print("Starting training from scratch...")
-		model.train(20000, 0.004)
+		# Try better training parameters
+		model.train(20000, 0.001)  # More epochs, lower learning rate
 		model.save()
 
 	for idx,t in enumerate(target_images):
