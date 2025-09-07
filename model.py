@@ -110,6 +110,10 @@ class Model(nn.Module):
 		Args:
 			new_pose_path (str): Path to the new pose UV map.
 		"""
+		if not new_pose.getbbox():
+			print("Error: New pose image is empty or has no bounding box.")
+			return new_pose
+  
 		uv_newpose = np.array(new_pose.convert("RGB"))
 		output = np.zeros((UV_HEIGHT, UV_WIDTH, 3), dtype=np.uint8)
 

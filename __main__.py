@@ -10,7 +10,7 @@ from os.path import isfile, join
 
 from constants import LIMB_COLORS, NUM_LIMBS
 from model import Model
-from util import get_local_coordinates, get_limb_direction_features
+from util import get_local_coordinates, get_limb_direction_features, to_spritesheet
 
 # --------------------------
 # 1. Define multiple training UV + texture file paths
@@ -180,44 +180,6 @@ print(f"Using device: {device}")
 inputs = torch.tensor(np.array(inputs_list), dtype=torch.float32, device=device)
 targets = torch.tensor(np.array(targets_list), dtype=torch.long, device=device)
 
-
-# # --------------------------
-# # 7. Apply to new pose
-# # --------------------------
-# def apply_to_new_pose(model: Model, uv_newpose_path: str, output_path: str = "newpose_textured.png") -> None:
-# 	uv_newpose: np.ndarray = np.array(Image.open(uv_newpose_path).convert("RGB"))
-# 	output: np.ndarray = np.zeros((UV_HEIGHT, UV_WIDTH, 3), dtype=np.uint8)
-
-# 	with torch.no_grad():  # Disable gradient computation for inference
-# 		for y in range(UV_HEIGHT):
-# 			for x in range(UV_WIDTH):
-# 				limb_id: Optional[int] = limb_colors.get(tuple(uv_newpose[y, x]), None)
-# 				if limb_id is None:
-# 					continue
-# 				one_hot: np.ndarray = np.zeros(num_limbs)
-# 				one_hot[limb_id] = 1.0
-# 				x_norm: float = x / UV_WIDTH
-# 				y_norm: float = y / UV_HEIGHT
-# 				inp: torch.Tensor = torch.tensor(np.concatenate([one_hot, [x_norm, y_norm]]), dtype=torch.float32, device=device)
-# 				logits: torch.Tensor = model(inp.unsqueeze(0))
-				
-# 				pred_idx: int = int(torch.argmax(logits, dim=1).cpu().item())  # Move to CPU before getting item
-# 				output[y, x] = palette[pred_idx]
-
-# 	Image.fromarray(output).save(output_path)
-# 	print(f"Saved textured pose to {output_path}")
-
-# def load_model_weights(model: Model, weights_path: str) -> bool:
-# 	"""
-# 	Loads model weights from a specified path.
-# 	"""
-# 	if not Path(weights_path).exists():
-# 		print(f"Model weights not found at {weights_path}")
-# 		return False
-# 	model.load_state_dict(torch.load(weights_path, map_location=device))
-# 	print(f"Model weights loaded from {weights_path}")
-# 	return True
-
 # --------------------------
 # 8. Main execution
 # --------------------------
@@ -238,14 +200,20 @@ def main() -> None:
 		model.train(20000, 0.001)  # More epochs, lower learning rate
 		model.save()
 
-	for idx,t in enumerate(target_images):
-		new_pose = model.apply_to_new_pose(t)
+	if IS_SPRITESHEET:
+		new_sprites = [model.apply_to_new_pose(t) for t in target_images]
+		if new_sprites:
+			spritesheet = to_spritesheet(new_sprites, 16, 32)
+			spritesheet.save("output/spritesheet.png")
+	else:
+		for idx,t in enumerate(target_images):
+			new_pose = model.apply_to_new_pose(t)
 
-		if new_pose is not None:
-			new_pose.save(Path("output") / Path(f"new_pose_{idx}.png"))
-			print(f"New pose textured image saved as 'new_pose_{idx}.png'")
-		else:
-			print("Failed to apply model to new pose.")
+			if new_pose is not None:
+				new_pose.save(Path("output") / Path(f"new_pose_{idx}.png"))
+				print(f"New pose textured image saved as 'new_pose_{idx}.png'")
+			else:
+				print("Failed to apply model to new pose.")
 
 	# Clean up CUDA memory
 	if torch.cuda.is_available():

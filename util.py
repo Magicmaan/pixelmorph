@@ -1,5 +1,6 @@
 import numpy as np
-from typing import Tuple, Dict
+from typing import List, Tuple, Dict
+from PIL import Image
 
 # --------------------------
 # 3. Helper functions for local coordinates per limb
@@ -115,3 +116,71 @@ def get_local_coordinates(x: int, y: int, limb_id: int, limb_colors: Dict[Tuple[
 	local_y = max(0.0, min(1.0, local_y))
 	
 	return (local_x, local_y)
+
+def from_spritesheet(image: Image.Image, cell_width: int, cell_height: int, desired_size: Tuple[int, int]) -> List[Image.Image]:
+	"""
+	Extracts images from a spritesheet.
+	
+	Args:
+		Image: The spritesheet image.
+		cell_width: The width of each cell in the spritesheet.
+		cell_height: The height of each cell in the spritesheet.
+
+	Returns:
+		List of extracted images.
+	"""
+	width, height = image.size
+	num_cols = width // cell_width
+	num_rows = height // cell_height
+
+	cells = []
+	for row in range(num_rows):
+		for col in range(num_cols):
+			img = image.crop((
+				col * cell_width, 
+				row * cell_height, 
+				(col + 1) * cell_width, 
+				(row + 1) * cell_height))
+			# Ensure the image is not empty
+			if img.size == 0 or img.size[0] <= 0 or img.size[1] <= 0:
+				print(f"Warning: Empty image at row {row}, col {col} in spritesheet")
+			
+			if not img.getbbox(alpha_only=True):
+				print(f"Warning: Image at row {row}, col {col} in spritesheet is empty")
+			
+   
+   
+			# Paste the cropped image onto a blank 32x32 canvas, centered
+			image_resized = Image.new("RGBA", desired_size, (0, 0, 0, 0))  # Transparent background
+			offset_x = (desired_size[0] - img.width) // 2
+			offset_y = (desired_size[1] - img.height) // 2
+			image_resized.paste(img, (offset_x, offset_y))
+   
+			cells.append(image_resized)
+   
+	return cells
+
+def to_spritesheet(images: List[Image.Image], cell_width: int, cell_height: int) -> Image.Image:
+	"""
+	Creates a spritesheet from a list of images.
+	
+	Args:
+		images: List of images to combine into a spritesheet.
+		cell_width: Width of each cell in the spritesheet.
+		cell_height: Height of each cell in the spritesheet.
+		image_width: Width of the final spritesheet image.
+		image_height: Height of the final spritesheet image.
+
+	Returns:
+		A single Image object containing the spritesheet.
+	"""
+	spritesheet = Image.new("RGBA", (cell_width * len(images), cell_height), (0, 0, 0, 0))  # Transparent background
+ 
+	for idx, img in enumerate(images):
+		image_resized = Image.new("RGBA", (cell_width, cell_height), (0, 0, 0, 0))
+		offset_x = (cell_width - img.width) // 2
+		offset_y = (cell_height - img.height) // 2
+		image_resized.paste(img, (offset_x, offset_y))
+		spritesheet.paste(image_resized, (idx * cell_width, 0))
+
+	return spritesheet
